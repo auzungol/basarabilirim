@@ -74,7 +74,6 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-// WidgetsBindingObserver ekleyerek uygulama hareketlerini izliyoruz
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   int _current = 0;
 
@@ -89,23 +88,20 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
-    // Gözlemciyi başlat
     WidgetsBinding.instance.addObserver(this);
   }
 
   @override
   void dispose() {
-    // Gözlemciyi kaldır
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Uygulama her öne plana geldiğinde (resumed) tarih kontrolü yap
     if (state == AppLifecycleState.resumed) {
       context.read<AppProvider>().refresh();
-      setState(() {}); // Ana ekrandaki tarih yazısını da güncellemek için
+      setState(() {});
     }
   }
 
@@ -125,9 +121,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       body: SafeArea(
         child: Column(
           children: [
-            // Header
+            // Header (Padding ve boşluklar azaltıldı)
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -152,20 +148,20 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   ),
                   AnimatedContainer(
                     duration: const Duration(milliseconds: 300),
-                    width: 44,
-                    height: 44,
+                    width: 40,
+                    height: 40,
                     decoration: BoxDecoration(
                       color: tab.accent.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(10),
                       border: Border.all(color: tab.accent.withOpacity(0.3), width: 1.5),
                     ),
-                    child: Icon(tab.icon, color: tab.accent, size: 22),
+                    child: Icon(tab.icon, color: tab.accent, size: 20),
                   ),
                 ],
               ),
             ),
 
-            const SizedBox(height: 20),
+            const SizedBox(height: 12), // Boşluk azaltıldı
 
             // Tab bar
             Padding(
@@ -180,12 +176,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 200),
                         margin: EdgeInsets.only(right: i < _tabs.length - 1 ? 8 : 0),
-                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        padding: const EdgeInsets.symmetric(vertical: 8),
                         decoration: BoxDecoration(
                           color: isActive
                               ? t.accent.withOpacity(0.15)
                               : Colors.white.withOpacity(0.04),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(10),
                           border: Border.all(
                               color: isActive
                                   ? t.accent.withOpacity(0.6)
@@ -195,13 +191,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         child: Column(
                           children: [
                             Icon(t.icon,
-                                size: 18,
+                                size: 16,
                                 color: isActive ? t.accent : AppColors.textSecondary),
-                            const SizedBox(height: 4),
+                            const SizedBox(height: 2),
                             Text(
                               t.label,
                               style: TextStyle(
-                                fontSize: 11,
+                                fontSize: 10,
                                 color: isActive ? t.accent : AppColors.textSecondary,
                                 fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
                               ),
@@ -215,7 +211,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               ),
             ),
 
-            const SizedBox(height: 8),
+            const SizedBox(height: 4), // Boşluk azaltıldı
 
             // Screen
             Expanded(

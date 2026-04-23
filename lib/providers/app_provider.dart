@@ -59,20 +59,14 @@ class AppProvider extends ChangeNotifier {
     }
 
     if (lastSavedDate != todayStr) {
-      // Smoke Archive
-      smoke.history.add({
-        'date': lastSavedDate,
-        'smoked': smoke.dailySmoked,
-        'limit': smoke.dailyLimit,
-      });
+      smoke.history.add({'date': lastSavedDate, 'smoked': smoke.dailySmoked, 'limit': smoke.dailyLimit});
       smoke.dailySmoked = 0;
 
-      // Diet Archive (Maintenance eklendi)
       diet.history.add({
         'date': lastSavedDate,
         'calories': diet.calories,
         'goal': diet.goal,
-        'maintenance': diet.maintenance, // Kümülatif hesap için kritik
+        'maintenance': diet.maintenance,
         'water': diet.water,
         'meals': diet.meals.map((m) => m.toJson()).toList(),
       });
@@ -80,7 +74,6 @@ class AppProvider extends ChangeNotifier {
       diet.water = 0;
       diet.meals = [];
 
-      // Study Archive
       study.history.add({
         'date': lastSavedDate,
         'totalMinutes': study.totalTodayMinutes,
@@ -102,112 +95,40 @@ class AppProvider extends ChangeNotifier {
   }
 
   void clearHistory(String type) {
-    if (type == 'smoke') {
-      smoke.history = [];
-      _saveSmoke();
-    } else if (type == 'diet') {
-      diet.history = [];
-      _saveDiet();
-    } else if (type == 'study') {
-      study.history = [];
-      _saveStudy();
-    }
+    if (type == 'smoke') { smoke.history = []; _saveSmoke(); } 
+    else if (type == 'diet') { diet.history = []; _saveDiet(); } 
+    else if (type == 'study') { study.history = []; _saveStudy(); }
     notifyListeners();
   }
 
-  void _saveAll() {
-    _saveSmoke();
-    _saveDiet();
-    _saveStudy();
-    _saveProjects();
-  }
-
+  void _saveAll() { _saveSmoke(); _saveDiet(); _saveStudy(); _saveProjects(); }
   void _saveSmoke() => _prefs.setString('smoke', jsonEncode(smoke.toJson()));
   void _saveDiet() => _prefs.setString('diet', jsonEncode(diet.toJson()));
   void _saveStudy() => _prefs.setString('study', jsonEncode(study.toJson()));
   void _saveProjects() => _prefs.setString('projects', jsonEncode(projects.toJson()));
 
-  // ── Smoke ──────────────────────────────────────────────────────────
-  void addSmoke() {
-    _checkDateAndReset();
-    smoke.dailySmoked++;
-    _saveSmoke();
+  // ── Study Gelişmiş (RENK DESTEĞİ EKLENDİ) ──────────────────────────
+  void addSubject(String name, int colorValue) {
+    if (name.isEmpty) return;
+    study.subjects.add(Subject(
+      id: DateTime.now().millisecondsSinceEpoch.toString(), 
+      name: name,
+      colorValue: colorValue,
+    ));
+    _saveStudy();
     notifyListeners();
   }
 
-  void removeSmoke() {
-    _checkDateAndReset();
-    if (smoke.dailySmoked > 0) smoke.dailySmoked--;
-    _saveSmoke();
+  void deleteSubject(String id) {
+    study.subjects.removeWhere((s) => s.id == id);
+    _saveStudy();
     notifyListeners();
   }
 
-  void updateSmokeSettings({int? limit, double? price, int? perPack}) {
-    if (limit != null) smoke.dailyLimit = limit;
-    if (price != null) smoke.pricePerPack = price;
-    if (perPack != null) smoke.cigarettesPerPack = perPack;
-    _saveSmoke();
-    notifyListeners();
-  }
-
-  // ── Diet ───────────────────────────────────────────────────────────
-  void addMeal(String name, int calories) {
-    _checkDateAndReset();
-    final now = TimeOfDay.now();
-    final time = '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
-    diet.meals.add(Meal(name: name, calories: calories, time: time));
-    diet.calories += calories;
-    _saveDiet();
-    notifyListeners();
-  }
-
-  void removeMeal(int index) {
-    _checkDateAndReset();
-    final meal = diet.meals[index];
-    diet.calories -= meal.calories;
-    diet.meals.removeAt(index);
-    _saveDiet();
-    notifyListeners();
-  }
-
-  void addWater() {
-    _checkDateAndReset();
-    diet.water++;
-    _saveDiet();
-    notifyListeners();
-  }
-
-  void removeWater() {
-    _checkDateAndReset();
-    if (diet.water > 0) {
-      diet.water--;
-      _saveDiet();
-      notifyListeners();
-    }
-  }
-
-  void updateDietInfo({
-    int? age,
-    double? weight,
-    int? height,
-    bool? isMale,
-    double? activityMultiplier,
-    int? goal,
-  }) {
-    if (age != null) diet.age = age;
-    if (weight != null) diet.weight = weight;
-    if (height != null) diet.height = height;
-    if (isMale != null) diet.isMale = isMale;
-    if (activityMultiplier != null) diet.activityMultiplier = activityMultiplier;
-    if (goal != null) diet.goal = goal;
-    _saveDiet();
-    notifyListeners();
-  }
-
-  // ── Study ──────────────────────────────────────────────────────────
-  void startStudySession(String subject) {
+  void startStudySession(String subject, String topic) {
     _checkDateAndReset();
     study.activeSubject = subject;
+    study.activeTopic = topic;
     study.sessionStart = DateTime.now();
     notifyListeners();
   }
@@ -215,85 +136,48 @@ class AppProvider extends ChangeNotifier {
   void stopStudySession() {
     _checkDateAndReset();
     if (!study.isActive) return;
+    
     final duration = DateTime.now().difference(study.sessionStart!).inMinutes;
-    final now = TimeOfDay.now();
+    final now = DateTime.now();
     final timeStr = '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+    final dateStr = '${now.day}.${now.month}.${now.year}';
+
     study.sessions.add(StudySession(
       subject: study.activeSubject!,
+      topic: study.activeTopic,
       durationMinutes: duration,
       time: timeStr,
     ));
+
+    final subIdx = study.subjects.indexWhere((s) => s.name == study.activeSubject);
+    if (subIdx != -1) {
+      study.subjects[subIdx].totalMinutes += duration;
+      study.subjects[subIdx].lastTopic = study.activeTopic;
+      study.subjects[subIdx].lastDate = dateStr;
+    }
+
     study.totalTodayMinutes += duration;
     study.activeSubject = null;
+    study.activeTopic = null;
     study.sessionStart = null;
     _saveStudy();
     notifyListeners();
   }
 
-  // ── Projects ──────────────────────────────────────────────────────
-  void addProject(String name, String desc, Priority priority, String deadline) {
-    final now = DateTime.now();
-    final dateStr = '${now.day}.${now.month}.${now.year}';
-    projects.list.add(Project(
-      id: now.millisecondsSinceEpoch,
-      name: name,
-      desc: desc,
-      priority: priority,
-      deadline: deadline,
-      created: dateStr,
-    ));
-    _saveProjects();
-    notifyListeners();
-  }
-
-  void updateProject(int id, {String? name, String? desc, Priority? priority, String? deadline}) {
-    final index = projects.list.indexWhere((p) => p.id == id);
-    if (index != -1) {
-      projects.list[index] = projects.list[index].copyWith(
-        name: name,
-        desc: desc,
-        priority: priority,
-        deadline: deadline,
-      );
-      _saveProjects();
-      notifyListeners();
-    }
-  }
-
-  void toggleProject(int id) {
-    final index = projects.list.indexWhere((p) => p.id == id);
-    if (index != -1) {
-      projects.list[index] = projects.list[index].copyWith(done: !projects.list[index].done);
-      _saveProjects();
-      notifyListeners();
-    }
-  }
-
-  void deleteProject(int id) {
-    projects.list.removeWhere((p) => p.id == id);
-    _saveProjects();
-    notifyListeners();
-  }
-
-  void addTask(int projectId, String taskName) {
-    if (taskName.isEmpty) return;
-    final p = projects.list.firstWhere((p) => p.id == projectId);
-    p.tasks.add(ProjectTask(name: taskName));
-    _saveProjects();
-    notifyListeners();
-  }
-
-  void deleteTask(int projectId, int taskIndex) {
-    final p = projects.list.firstWhere((p) => p.id == projectId);
-    p.tasks.removeAt(taskIndex);
-    _saveProjects();
-    notifyListeners();
-  }
-
-  void toggleTask(int projectId, int taskIndex) {
-    final p = projects.list.firstWhere((p) => p.id == projectId);
-    p.tasks[taskIndex].done = !p.tasks[taskIndex].done;
-    _saveProjects();
-    notifyListeners();
-  }
+  // ... (Diğer metodlar aynı)
+  void addSmoke() { _checkDateAndReset(); smoke.dailySmoked++; _saveSmoke(); notifyListeners(); }
+  void removeSmoke() { _checkDateAndReset(); if (smoke.dailySmoked > 0) smoke.dailySmoked--; _saveSmoke(); notifyListeners(); }
+  void updateSmokeSettings({int? limit, double? price, int? perPack}) { if (limit != null) smoke.dailyLimit = limit; if (price != null) smoke.pricePerPack = price; if (perPack != null) smoke.cigarettesPerPack = perPack; _saveSmoke(); notifyListeners(); }
+  void addMeal(String name, int calories) { _checkDateAndReset(); final now = TimeOfDay.now(); final time = '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}'; diet.meals.add(Meal(name: name, calories: calories, time: time)); diet.calories += calories; _saveDiet(); notifyListeners(); }
+  void removeMeal(int index) { _checkDateAndReset(); final meal = diet.meals[index]; diet.calories -= meal.calories; diet.meals.removeAt(index); _saveDiet(); notifyListeners(); }
+  void addWater() { _checkDateAndReset(); diet.water++; _saveDiet(); notifyListeners(); }
+  void removeWater() { _checkDateAndReset(); if (diet.water > 0) { diet.water--; _saveDiet(); notifyListeners(); } }
+  void updateDietInfo({int? age, double? weight, int? height, bool? isMale, double? activityMultiplier, int? goal}) { if (age != null) diet.age = age; if (weight != null) diet.weight = weight; if (height != null) diet.height = height; if (isMale != null) diet.isMale = isMale; if (activityMultiplier != null) diet.activityMultiplier = activityMultiplier; if (goal != null) diet.goal = goal; _saveDiet(); notifyListeners(); }
+  void addProject(String name, String desc, Priority priority, String deadline) { final now = DateTime.now(); final dateStr = '${now.day}.${now.month}.${now.year}'; projects.list.add(Project(id: now.millisecondsSinceEpoch, name: name, desc: desc, priority: priority, deadline: deadline, created: dateStr)); _saveProjects(); notifyListeners(); }
+  void updateProject(int id, {String? name, String? desc, Priority? priority, String? deadline}) { final index = projects.list.indexWhere((p) => p.id == id); if (index != -1) { projects.list[index] = projects.list[index].copyWith(name: name, desc: desc, priority: priority, deadline: deadline); _saveProjects(); notifyListeners(); } }
+  void toggleProject(int id) { final index = projects.list.indexWhere((p) => p.id == id); if (index != -1) { projects.list[index] = projects.list[index].copyWith(done: !projects.list[index].done); _saveProjects(); notifyListeners(); } }
+  void deleteProject(int id) { projects.list.removeWhere((p) => p.id == id); _saveProjects(); notifyListeners(); }
+  void addTask(int projectId, String taskName) { if (taskName.isEmpty) return; final p = projects.list.firstWhere((p) => p.id == projectId); p.tasks.add(ProjectTask(name: taskName)); _saveProjects(); notifyListeners(); }
+  void deleteTask(int projectId, int taskIndex) { final p = projects.list.firstWhere((p) => p.id == projectId); p.tasks.removeAt(taskIndex); _saveProjects(); notifyListeners(); }
+  void toggleTask(int projectId, int taskIndex) { final p = projects.list.firstWhere((p) => p.id == projectId); p.tasks[taskIndex].done = !p.tasks[taskIndex].done; _saveProjects(); notifyListeners(); }
 }

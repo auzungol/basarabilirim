@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
+import '../models/study_model.dart';
 import '../theme.dart';
 import '../widgets/shared_widgets.dart';
 
@@ -15,7 +16,6 @@ class StudyScreen extends StatefulWidget {
 }
 
 class _StudyScreenState extends State<StudyScreen> {
-  final _subjectCtrl = TextEditingController();
   Timer? _timer;
   int _elapsed = 0;
 
@@ -23,15 +23,15 @@ class _StudyScreenState extends State<StudyScreen> {
   void initState() {
     super.initState();
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-      final p = context.read<AppProvider>();
-      if (p.study.isActive) setState(() => _elapsed++);
+      if (context.read<AppProvider>().study.isActive) {
+        setState(() => _elapsed++);
+      }
     });
   }
 
   @override
   void dispose() {
     _timer?.cancel();
-    _subjectCtrl.dispose();
     super.dispose();
   }
 
@@ -47,17 +47,128 @@ class _StudyScreenState extends State<StudyScreen> {
     return h > 0 ? '${h}s ${m}d' : '${m}d';
   }
 
-  void _start(AppProvider p) {
-    final s = _subjectCtrl.text.trim();
-    if (s.isEmpty) return;
-    setState(() => _elapsed = 0);
-    p.startStudySession(s);
+  void _showAddSubject(BuildContext context, AppProvider p) {
+    final ctrl = TextEditingController();
+    int selectedColor = 0xFF00FFC8;
+    
+    final colors = [
+      {'name': 'Yeşil', 'value': 0xFF00FFC8},
+      {'name': 'Mavi', 'value': 0xFF1E90FF},
+      {'name': 'Kırmızı', 'value': 0xFFFF4757},
+      {'name': 'Turuncu', 'value': 0xFFFFA502},
+    ];
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          backgroundColor: AppColors.card,
+          title: Text('Yeni Ders Ekle', style: GoogleFonts.spaceMono(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: ctrl,
+                autofocus: true,
+                style: const TextStyle(color: Colors.white),
+                decoration: const InputDecoration(hintText: 'Ders adı'),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: colors.map((c) => GestureDetector(
+                  onTap: () => setDialogState(() => selectedColor = c['value'] as int),
+                  child: Container(
+                    width: 35,
+                    height: 35,
+                    decoration: BoxDecoration(
+                      color: Color(c['value'] as int),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: selectedColor == c['value'] ? Colors.white : Colors.transparent,
+                        width: 2,
+                      ),
+                    ),
+                  ),
+                )).toList(),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('İPTAL')),
+            TextButton(
+              onPressed: () {
+                p.addSubject(ctrl.text.trim(), selectedColor);
+                Navigator.pop(context);
+              },
+              child: const Text('EKLE', style: TextStyle(color: AppColors.study, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
-  void _stop(AppProvider p) {
-    p.stopStudySession();
-    _subjectCtrl.clear();
-    setState(() => _elapsed = 0);
+  void _showDetails(BuildContext context, Subject sub) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.card,
+        title: Text(sub.name, style: GoogleFonts.spaceMono(color: Color(sub.colorValue), fontSize: 16, fontWeight: FontWeight.bold)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _detailRow('Toplam:', _fmtMin(sub.totalMinutes)),
+            const SizedBox(height: 10),
+            _detailRow('Son Konu:', sub.lastTopic ?? 'Yok'),
+            const SizedBox(height: 10),
+            _detailRow('Son Tarih:', sub.lastDate ?? '-'),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('KAPAT', style: TextStyle(color: Colors.white))),
+        ],
+      ),
+    );
+  }
+
+  Widget _detailRow(String label, String value) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: const TextStyle(color: AppColors.textSecondary, fontSize: 10)),
+        Text(value, style: const TextStyle(color: Colors.white, fontSize: 14)),
+      ],
+    );
+  }
+
+  void _startWithSubject(BuildContext context, AppProvider p, Subject sub) {
+    final ctrl = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.card,
+        title: Text(sub.name, style: TextStyle(color: Color(sub.colorValue))),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          style: const TextStyle(color: Colors.white),
+          decoration: const InputDecoration(hintText: 'Konu ne?'),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('İPTAL')),
+          TextButton(
+            onPressed: () {
+              setState(() => _elapsed = 0);
+              p.startStudySession(sub.name, ctrl.text.trim());
+              Navigator.pop(context);
+            },
+            child: const Text('BAŞLA', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -67,137 +178,137 @@ class _StudyScreenState extends State<StudyScreen> {
         final study = p.study;
 
         return SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
           child: Column(
             children: [
-              // Timer card
+              // DERSLERİM GRID (ÜSTTE)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const SectionLabel('DERSLERİM'),
+                  IconButton(
+                    onPressed: () => _showAddSubject(context, p),
+                    icon: const Icon(Icons.add_circle, color: AppColors.study, size: 28),
+                    padding: EdgeInsets.zero,
+                  ),
+                ],
+              ),
+              
+              GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 3,
+                  crossAxisSpacing: 8,
+                  mainAxisSpacing: 8,
+                  childAspectRatio: 1.0,
+                ),
+                itemCount: study.subjects.length,
+                itemBuilder: (context, index) {
+                  final sub = study.subjects[index];
+                  final color = Color(sub.colorValue);
+                  return InkWell(
+                    onTap: study.isActive ? null : () => _startWithSubject(context, p, sub),
+                    onLongPress: () {
+                      showDialog(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          backgroundColor: AppColors.card,
+                          title: const Text('Sil'),
+                          content: Text('${sub.name} silinsin mi?'),
+                          actions: [
+                            TextButton(onPressed: () => Navigator.pop(context), child: const Text('HAYIR')),
+                            TextButton(onPressed: () { p.deleteSubject(sub.id); Navigator.pop(context); }, child: const Text('SİL', style: TextStyle(color: Colors.red))),
+                          ],
+                        ),
+                      );
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppColors.card,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: color.withOpacity(0.4)),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(child: Text(sub.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
+                              GestureDetector(
+                                onTap: () => _showDetails(context, sub),
+                                child: Icon(Icons.info_outline, color: color.withOpacity(0.6), size: 14),
+                              ),
+                            ],
+                          ),
+                          const Spacer(),
+                          Text(_fmtMin(sub.totalMinutes), style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 4),
+                          Icon(Icons.play_arrow, color: color, size: 18),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+
+              const SizedBox(height: 24),
+
+              // SAYAÇ
               AppCard(
                 borderColor: AppColors.study,
                 backgroundColor: const Color(0xFF000D0D),
                 child: Column(
                   children: [
                     Text(
-                      study.isActive ? '📚 ${study.activeSubject}' : 'ÇALIŞMA SAYACI',
-                      style: TextStyle(
-                        color: AppColors.study,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 3,
-                      ),
+                      study.isActive 
+                        ? '${study.activeSubject} ${study.activeTopic != null && study.activeTopic!.isNotEmpty ? "- ${study.activeTopic}" : ""}' 
+                        : 'ÇALIŞMA SAYACI',
+                      style: const TextStyle(color: AppColors.study, fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 2),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12),
                     Text(
                       study.isActive ? _fmt(_elapsed) : '00:00',
-                      style: GoogleFonts.spaceMono(
-                        fontSize: 64,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                        letterSpacing: 2,
-                      ),
+                      style: GoogleFonts.spaceMono(fontSize: 56, fontWeight: FontWeight.w700, color: Colors.white),
                     ),
-                    const SizedBox(height: 8),
-                    RichText(
-                      text: TextSpan(
-                        children: [
-                          const TextSpan(
-                              text: 'Bugün toplam: ',
-                              style: TextStyle(
-                                  color: AppColors.textSecondary, fontSize: 13)),
-                          TextSpan(
-                              text: _fmtMin(study.totalTodayMinutes),
-                              style: const TextStyle(
-                                  color: AppColors.study,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w700)),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    if (!study.isActive) ...[
-                      Row(
-                        children: [
-                          Expanded(
-                            child: TextField(
-                              controller: _subjectCtrl,
-                              style: const TextStyle(color: Colors.white, fontSize: 14),
-                              onSubmitted: (_) => _start(p),
-                              decoration:
-                                  const InputDecoration(hintText: 'Ders / Konu adı'),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          IconBtn(
-                            icon: Icons.play_arrow,
-                            color: AppColors.study,
-                            iconColor: const Color(0xFF001A14),
-                            onTap: () => _start(p),
-                          ),
-                        ],
-                      ),
-                    ] else ...[
+                    const SizedBox(height: 4),
+                    Text('Bugün toplam: ${_fmtMin(study.totalTodayMinutes)}', style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                    if (study.isActive) ...[
+                      const SizedBox(height: 16),
                       AccentButton(
-                        label: '⏹ Bitir ve Kaydet',
+                        label: '⏹ ÇALIŞMAYI BİTİR',
                         color: AppColors.smoke,
                         fullWidth: true,
-                        onTap: () => _stop(p),
+                        onTap: () { p.stopStudySession(); setState(() => _elapsed = 0); },
                       ),
                     ],
                   ],
                 ),
               ),
 
-              const SizedBox(height: 14),
+              const SizedBox(height: 20),
+              
+              if (study.sessions.isNotEmpty) ...[
+                const SectionLabel('BUGÜNKÜ AKIŞ'),
+                ...study.sessions.reversed.map((s) {
+                  // Oturumun ait olduğu dersi bulup rengini alıyoruz
+                  final sub = study.subjects.firstWhere(
+                    (element) => element.name == s.subject,
+                    orElse: () => Subject(id: '', name: '', colorValue: AppColors.study.value),
+                  );
+                  final sColor = Color(sub.colorValue);
 
-              // Sessions
-              if (study.sessions.isNotEmpty)
-                AppCard(
-                  borderColor: Colors.white,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SectionLabel('BUGÜNKÜ SEANSLAR'),
-                      const SizedBox(height: 12),
-                      ...study.sessions.reversed.toList().asMap().entries.map((e) {
-                        final i = e.key;
-                        final s = e.value;
-                        return Column(
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(s.subject,
-                                        style: const TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w500)),
-                                    Text(s.time,
-                                        style: const TextStyle(
-                                            color: AppColors.textSecondary,
-                                            fontSize: 11)),
-                                  ],
-                                ),
-                                Text(
-                                  _fmtMin(s.durationMinutes),
-                                  style: GoogleFonts.spaceMono(
-                                      color: AppColors.study,
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w700),
-                                ),
-                              ],
-                            ),
-                            if (i < study.sessions.length - 1)
-                              Divider(
-                                  height: 20,
-                                  color: Colors.white.withOpacity(0.05)),
-                          ],
-                        );
-                      }),
-                    ],
-                  ),
-                ),
+                  return ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    dense: true,
+                    leading: Icon(Icons.bookmark, color: sColor.withOpacity(0.7), size: 16),
+                    title: Text(s.subject, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                    subtitle: s.topic != null && s.topic!.isNotEmpty ? Text(s.topic!, style: const TextStyle(fontSize: 11)) : null,
+                    trailing: Text(_fmtMin(s.durationMinutes), style: GoogleFonts.spaceMono(fontSize: 12, color: sColor)),
+                  );
+                }),
+              ],
             ],
           ),
         );
