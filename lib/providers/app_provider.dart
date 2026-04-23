@@ -80,7 +80,7 @@ class AppProvider extends ChangeNotifier {
       diet.water = 0;
       diet.meals = [];
 
-      // Study Archive (Seans detayları eklendi)
+      // Study Archive
       study.history.add({
         'date': lastSavedDate,
         'totalMinutes': study.totalTodayMinutes,
@@ -101,7 +101,6 @@ class AppProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Geçmişi Temizleme Metodları
   void clearHistory(String type) {
     if (type == 'smoke') {
       smoke.history = [];
@@ -173,11 +172,10 @@ class AppProvider extends ChangeNotifier {
 
   void addWater() {
     _checkDateAndReset();
-    if (diet.water < diet.waterGoal) {
-      diet.water++;
-      _saveDiet();
-      notifyListeners();
-    }
+    // LIMIT KALDIRILDI: Artık 8'den fazla su eklenebilir
+    diet.water++;
+    _saveDiet();
+    notifyListeners();
   }
 
   void removeWater() {
