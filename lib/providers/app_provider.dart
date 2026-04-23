@@ -130,6 +130,12 @@ class AppProvider extends ChangeNotifier {
     study.activeSubject = subject;
     study.activeTopic = topic;
     study.sessionStart = DateTime.now();
+    study.isPaused = false;
+    notifyListeners();
+  }
+
+  void togglePauseStudySession() {
+    study.isPaused = !study.isPaused;
     notifyListeners();
   }
 
@@ -137,7 +143,19 @@ class AppProvider extends ChangeNotifier {
     _checkDateAndReset();
     if (!study.isActive) return;
     
-    final duration = DateTime.now().difference(study.sessionStart!).inMinutes;
+    // Not: Molalar düşülmüyor, sadece o andaki kronometre değeri üzerinden süre hesaplanıyor.
+    // Ancak kullanıcı arayüzünde kronometre mola verildiğinde duracağı için bu yeterli olacaktır.
+    // Eğer sessionStart baz alınırsa mola süreleri de dahil olur.
+    // Bu yüzden kronometredeki süreyi (dakika cinsinden) almalıyız veya stop'ta geçen süreyi sessionStart'tan bağımsız hesaplamalıyız.
+    // Şimdilik basitleştirmek için: sessionStart'tan bugüne geçen süre yerine, ekranda tutulan _elapsed süresini kullanalım.
+    // Ancak Provider içinde _elapsed tutulmuyor. 
+    // Bu yüzden stopStudySession'a dışarıdan dakika parametresi alalım.
+  }
+
+  void completeStudySession(int durationMinutes) {
+    _checkDateAndReset();
+    if (!study.isActive) return;
+
     final now = DateTime.now();
     final timeStr = '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
     final dateStr = '${now.day}.${now.month}.${now.year}';
@@ -145,21 +163,22 @@ class AppProvider extends ChangeNotifier {
     study.sessions.add(StudySession(
       subject: study.activeSubject!,
       topic: study.activeTopic,
-      durationMinutes: duration,
+      durationMinutes: durationMinutes,
       time: timeStr,
     ));
 
     final subIdx = study.subjects.indexWhere((s) => s.name == study.activeSubject);
     if (subIdx != -1) {
-      study.subjects[subIdx].totalMinutes += duration;
+      study.subjects[subIdx].totalMinutes += durationMinutes;
       study.subjects[subIdx].lastTopic = study.activeTopic;
       study.subjects[subIdx].lastDate = dateStr;
     }
 
-    study.totalTodayMinutes += duration;
+    study.totalTodayMinutes += durationMinutes;
     study.activeSubject = null;
     study.activeTopic = null;
     study.sessionStart = null;
+    study.isPaused = false;
     _saveStudy();
     notifyListeners();
   }

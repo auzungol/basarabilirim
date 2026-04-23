@@ -23,7 +23,8 @@ class _StudyScreenState extends State<StudyScreen> {
   void initState() {
     super.initState();
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (context.read<AppProvider>().study.isActive) {
+      final study = context.read<AppProvider>().study;
+      if (study.isActive && !study.isPaused) {
         setState(() => _elapsed++);
       }
     });
@@ -177,140 +178,165 @@ class _StudyScreenState extends State<StudyScreen> {
       builder: (context, p, _) {
         final study = p.study;
 
-        return SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-          child: Column(
-            children: [
-              // DERSLERİM GRID (ÜSTTE)
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const SectionLabel('DERSLERİM'),
-                  IconButton(
-                    onPressed: () => _showAddSubject(context, p),
-                    icon: const Icon(Icons.add_circle, color: AppColors.study, size: 28),
-                    padding: EdgeInsets.zero,
-                  ),
-                ],
-              ),
-              
-              GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 3,
-                  crossAxisSpacing: 8,
-                  mainAxisSpacing: 8,
-                  childAspectRatio: 1.0,
-                ),
-                itemCount: study.subjects.length,
-                itemBuilder: (context, index) {
-                  final sub = study.subjects[index];
-                  final color = Color(sub.colorValue);
-                  return InkWell(
-                    onTap: study.isActive ? null : () => _startWithSubject(context, p, sub),
-                    onLongPress: () {
-                      showDialog(
-                        context: context,
-                        builder: (context) => AlertDialog(
-                          backgroundColor: AppColors.card,
-                          title: const Text('Sil'),
-                          content: Text('${sub.name} silinsin mi?'),
-                          actions: [
-                            TextButton(onPressed: () => Navigator.pop(context), child: const Text('HAYIR')),
-                            TextButton(onPressed: () { p.deleteSubject(sub.id); Navigator.pop(context); }, child: const Text('SİL', style: TextStyle(color: Colors.red))),
-                          ],
+        return Column(
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                child: Column(
+                  children: [
+                    // DERSLERİM GRID (ÜSTTE)
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const SectionLabel('DERSLERİM'),
+                        IconButton(
+                          onPressed: () => _showAddSubject(context, p),
+                          icon: const Icon(Icons.add_circle, color: AppColors.study, size: 28),
+                          padding: EdgeInsets.zero,
                         ),
-                      );
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: AppColors.card,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: color.withOpacity(0.4)),
+                      ],
+                    ),
+                    
+                    GridView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 3,
+                        crossAxisSpacing: 8,
+                        mainAxisSpacing: 8,
+                        childAspectRatio: 1.0,
                       ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(child: Text(sub.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
-                              GestureDetector(
-                                onTap: () => _showDetails(context, sub),
-                                child: Icon(Icons.info_outline, color: color.withOpacity(0.6), size: 14),
+                      itemCount: study.subjects.length,
+                      itemBuilder: (context, index) {
+                        final sub = study.subjects[index];
+                        final color = Color(sub.colorValue);
+                        return InkWell(
+                          onTap: study.isActive ? null : () => _startWithSubject(context, p, sub),
+                          onLongPress: () {
+                            showDialog(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                backgroundColor: AppColors.card,
+                                title: const Text('Sil'),
+                                content: Text('${sub.name} silinsin mi?'),
+                                actions: [
+                                  TextButton(onPressed: () => Navigator.pop(context), child: const Text('HAYIR')),
+                                  TextButton(onPressed: () { p.deleteSubject(sub.id); Navigator.pop(context); }, child: const Text('SİL', style: TextStyle(color: Colors.red))),
+                                ],
                               ),
-                            ],
+                            );
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: AppColors.card,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: color.withOpacity(0.4)),
+                            ),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(child: Text(sub.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
+                                    GestureDetector(
+                                      onTap: () => _showDetails(context, sub),
+                                      child: Icon(Icons.info_outline, color: color.withOpacity(0.6), size: 14),
+                                    ),
+                                  ],
+                                ),
+                                const Spacer(),
+                                Text(_fmtMin(sub.totalMinutes), style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.bold)),
+                                const SizedBox(height: 4),
+                                Icon(Icons.play_arrow, color: color, size: 18),
+                              ],
+                            ),
                           ),
-                          const Spacer(),
-                          Text(_fmtMin(sub.totalMinutes), style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.bold)),
+                        );
+                      },
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    // SAYAÇ
+                    AppCard(
+                      borderColor: AppColors.study,
+                      backgroundColor: const Color(0xFF000D0D),
+                      child: Column(
+                        children: [
+                          Text(
+                            study.isActive 
+                              ? '${study.activeSubject} ${study.activeTopic != null && study.activeTopic!.isNotEmpty ? "- ${study.activeTopic}" : ""}' 
+                              : 'ÇALIŞMA SAYACI',
+                            style: const TextStyle(color: AppColors.study, fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 2),
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            study.isActive ? _fmt(_elapsed) : '00:00',
+                            style: GoogleFonts.spaceMono(fontSize: 56, fontWeight: FontWeight.w700, color: Colors.white),
+                          ),
                           const SizedBox(height: 4),
-                          Icon(Icons.play_arrow, color: color, size: 18),
+                          Text('Bugün toplam: ${_fmtMin(study.totalTodayMinutes)}', style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                          if (study.isActive) ...[
+                            const SizedBox(height: 16),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: AccentButton(
+                                    label: study.isPaused ? '▶ DEVAM ET' : '⏸ MOLA VER',
+                                    color: study.isPaused ? AppColors.study : AppColors.diet,
+                                    onTap: () { p.togglePauseStudySession(); },
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: AccentButton(
+                                    label: '⏹ BİTİR',
+                                    color: AppColors.smoke,
+                                    onTap: () { 
+                                      p.completeStudySession(_elapsed ~/ 60); 
+                                      setState(() => _elapsed = 0); 
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ],
                       ),
                     ),
-                  );
-                },
-              ),
 
-              const SizedBox(height: 24),
+                    const SizedBox(height: 20),
+                    
+                    if (study.sessions.isNotEmpty) ...[
+                      const SectionLabel('BUGÜNKÜ AKIŞ'),
+                      ...study.sessions.reversed.map((s) {
+                        // Oturumun ait olduğu dersi bulup rengini alıyoruz
+                        final sub = study.subjects.firstWhere(
+                          (element) => element.name == s.subject,
+                          orElse: () => Subject(id: '', name: '', colorValue: AppColors.study.value),
+                        );
+                        final sColor = Color(sub.colorValue);
 
-              // SAYAÇ
-              AppCard(
-                borderColor: AppColors.study,
-                backgroundColor: const Color(0xFF000D0D),
-                child: Column(
-                  children: [
-                    Text(
-                      study.isActive 
-                        ? '${study.activeSubject} ${study.activeTopic != null && study.activeTopic!.isNotEmpty ? "- ${study.activeTopic}" : ""}' 
-                        : 'ÇALIŞMA SAYACI',
-                      style: const TextStyle(color: AppColors.study, fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 2),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      study.isActive ? _fmt(_elapsed) : '00:00',
-                      style: GoogleFonts.spaceMono(fontSize: 56, fontWeight: FontWeight.w700, color: Colors.white),
-                    ),
-                    const SizedBox(height: 4),
-                    Text('Bugün toplam: ${_fmtMin(study.totalTodayMinutes)}', style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
-                    if (study.isActive) ...[
-                      const SizedBox(height: 16),
-                      AccentButton(
-                        label: '⏹ ÇALIŞMAYI BİTİR',
-                        color: AppColors.smoke,
-                        fullWidth: true,
-                        onTap: () { p.stopStudySession(); setState(() => _elapsed = 0); },
-                      ),
+                        final String displayText = (s.topic != null && s.topic!.isNotEmpty) 
+                            ? '${s.subject} - (${s.topic})' 
+                            : s.subject;
+
+                        return ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          dense: true,
+                          leading: Icon(Icons.bookmark, color: sColor.withOpacity(0.7), size: 16),
+                          title: Text(displayText, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                          trailing: Text(_fmtMin(s.durationMinutes), style: GoogleFonts.spaceMono(fontSize: 12, color: sColor)),
+                        );
+                      }),
                     ],
                   ],
                 ),
               ),
-
-              const SizedBox(height: 20),
-              
-              if (study.sessions.isNotEmpty) ...[
-                const SectionLabel('BUGÜNKÜ AKIŞ'),
-                ...study.sessions.reversed.map((s) {
-                  // Oturumun ait olduğu dersi bulup rengini alıyoruz
-                  final sub = study.subjects.firstWhere(
-                    (element) => element.name == s.subject,
-                    orElse: () => Subject(id: '', name: '', colorValue: AppColors.study.value),
-                  );
-                  final sColor = Color(sub.colorValue);
-
-                  return ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    dense: true,
-                    leading: Icon(Icons.bookmark, color: sColor.withOpacity(0.7), size: 16),
-                    title: Text(s.subject, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
-                    subtitle: s.topic != null && s.topic!.isNotEmpty ? Text(s.topic!, style: const TextStyle(fontSize: 11)) : null,
-                    trailing: Text(_fmtMin(s.durationMinutes), style: GoogleFonts.spaceMono(fontSize: 12, color: sColor)),
-                  );
-                }),
-              ],
-            ],
-          ),
+            ),
+          ],
         );
       },
     );

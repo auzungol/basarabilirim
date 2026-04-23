@@ -69,6 +69,7 @@ class StudyData {
   String? activeSubject;
   String? activeTopic;
   DateTime? sessionStart;
+  bool isPaused;
   List<StudySession> sessions;
   List<Subject> subjects;
   List<Map<String, dynamic>> history;
@@ -78,6 +79,7 @@ class StudyData {
     this.activeSubject,
     this.activeTopic,
     this.sessionStart,
+    this.isPaused = false,
     List<StudySession>? sessions,
     List<Subject>? subjects,
     List<Map<String, dynamic>>? history,
@@ -91,6 +93,7 @@ class StudyData {
         'totalTodayMinutes': totalTodayMinutes,
         'activeSubject': activeSubject,
         'activeTopic': activeTopic,
+        'isPaused': isPaused,
         'sessions': sessions.map((s) => s.toJson()).toList(),
         'subjects': subjects.map((s) => s.toJson()).toList(),
         'history': history,
@@ -100,6 +103,7 @@ class StudyData {
         totalTodayMinutes: int.tryParse(json['totalTodayMinutes']?.toString() ?? '0') ?? 0,
         activeSubject: json['activeSubject']?.toString(),
         activeTopic: json['activeTopic']?.toString(),
+        isPaused: json['isPaused'] ?? false,
         sessions: (json['sessions'] as List<dynamic>? ?? [])
             .map((s) => StudySession.fromJson(Map<String, dynamic>.from(s)))
             .toList(),
