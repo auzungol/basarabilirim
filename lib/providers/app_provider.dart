@@ -80,11 +80,12 @@ class AppProvider extends ChangeNotifier {
       diet.water = 0;
       diet.meals = [];
 
-      // Study Archive (DÜZELTİLDİ)
+      // Study Archive (Seans detayları eklendi)
       study.history.add({
         'date': lastSavedDate,
         'totalMinutes': study.totalTodayMinutes,
         'sessionCount': study.sessions.length,
+        'sessions': study.sessions.map((s) => s.toJson()).toList(),
       });
       study.totalTodayMinutes = 0;
       study.sessions = [];

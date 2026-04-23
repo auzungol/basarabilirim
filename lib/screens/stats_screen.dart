@@ -86,18 +86,9 @@ class _StatsScreenState extends State<StatsScreen> with SingleTickerProviderStat
           return TabBarView(
             controller: _tabController,
             children: [
-              _HistoryList(
-                items: p.smoke.history.reversed.toList(),
-                type: 'smoke',
-              ),
-              _HistoryList(
-                items: p.diet.history.reversed.toList(),
-                type: 'diet',
-              ),
-              _HistoryList(
-                items: p.study.history.reversed.toList(),
-                type: 'study',
-              ),
+              _HistoryList(items: p.smoke.history.reversed.toList(), type: 'smoke'),
+              _HistoryList(items: p.diet.history.reversed.toList(), type: 'diet'),
+              _HistoryList(items: p.study.history.reversed.toList(), type: 'study'),
             ],
           );
         },
@@ -134,22 +125,27 @@ class _HistoryList extends StatelessWidget {
         final item = items[index];
         final date = item['date'] ?? 'Bilinmeyen Tarih';
 
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: AppCard(
-            borderColor: _getColor().withOpacity(0.3),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+        return Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          decoration: BoxDecoration(
+            color: AppColors.card,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: _getColor().withOpacity(0.3)),
+          ),
+          child: Theme(
+            data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+            child: ExpansionTile(
+              iconColor: _getColor(),
+              collapsedIconColor: AppColors.textSecondary,
+              title: Text(date, style: GoogleFonts.spaceMono(color: _getColor(), fontWeight: FontWeight.bold, fontSize: 14)),
+              subtitle: Padding(
+                padding: const EdgeInsets.only(top: 8.0),
+                child: _buildSummary(item),
+              ),
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(date, style: GoogleFonts.spaceMono(color: _getColor(), fontWeight: FontWeight.bold)),
-                    const Icon(Icons.chevron_right, color: AppColors.textSecondary, size: 16),
-                  ],
-                ),
-                const Divider(color: Colors.white10, height: 20),
-                _buildContent(item),
+                const Divider(color: Colors.white10, height: 1),
+                _buildDetails(item),
+                const SizedBox(height: 12),
               ],
             ),
           ),
@@ -167,57 +163,110 @@ class _HistoryList extends StatelessWidget {
     }
   }
 
-  Widget _buildContent(Map<String, dynamic> item) {
+  // Kart kapalıyken görünen özet
+  Widget _buildSummary(Map<String, dynamic> item) {
+    if (type == 'smoke') {
+      final smoked = item['smoked'] ?? 0;
+      final limit = item['limit'] ?? 0;
+      return Text('$smoked / $limit Adet', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary));
+    } else if (type == 'diet') {
+      final cal = item['calories'] ?? 0;
+      final goal = item['goal'] ?? 0;
+      return Text('$cal / $goal kcal', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary));
+    } else {
+      final mins = item['totalMinutes'] ?? 0;
+      return Text('$mins Dakika Çalışma', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary));
+    }
+  }
+
+  // Kart açıldığında görünen detaylar
+  Widget _buildDetails(Map<String, dynamic> item) {
     if (type == 'smoke') {
       final smoked = item['smoked'] ?? 0;
       final limit = item['limit'] ?? 0;
       final diff = limit - smoked;
-      return Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _StatMini(label: 'İçilen', value: '$smoked'),
-          _StatMini(label: 'Hedef', value: '$limit'),
-          _StatMini(
-            label: 'Durum', 
-            value: diff >= 0 ? 'BAŞARILI' : 'AŞILDI',
-            color: diff >= 0 ? AppColors.success : AppColors.smoke,
-          ),
-        ],
+      return Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            _StatMini(label: 'İÇİLEN', value: '$smoked'),
+            _StatMini(label: 'LİMİT', value: '$limit'),
+            _StatMini(
+              label: 'DURUM', 
+              value: diff >= 0 ? 'BAŞARILI' : 'AŞILDI',
+              color: diff >= 0 ? AppColors.success : AppColors.smoke,
+            ),
+          ],
+        ),
       );
-    } else if (type == 'diet') {
-      final cal = item['calories'] ?? 0;
-      final goal = item['goal'] ?? 0;
+    } 
+    
+    if (type == 'diet') {
+      final meals = (item['meals'] as List?) ?? [];
       final water = item['water'] ?? 0;
-      return Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _StatMini(label: 'Kalori', value: '$cal/$goal'),
-              _StatMini(label: 'Su', value: '$water b.'),
-            ],
-          ),
-          if (item['meals'] != null && (item['meals'] as List).isNotEmpty) ...[
-             const SizedBox(height: 8),
-             Center(
-               child: Text('${(item['meals'] as List).length} öğün kaydedildi', 
-                 style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
-             ),
-          ]
-        ],
-      );
-    } else {
-      // Study
-      final mins = item['totalMinutes'] ?? 0;
-      final count = item['sessionCount'] ?? 0;
-      return Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _StatMini(label: 'Toplam Süre', value: '$mins dk'),
-          _StatMini(label: 'Oturum Sayısı', value: '$count'),
-        ],
+      
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Icon(Icons.water_drop, color: AppColors.diet, size: 16),
+                const SizedBox(width: 8),
+                Text('$water Bardak Su İçildi', style: const TextStyle(fontSize: 13, color: Colors.white70)),
+              ],
+            ),
+            const SizedBox(height: 12),
+            if (meals.isEmpty)
+              const Text('Öğün kaydı bulunamadı.', style: TextStyle(fontSize: 12, color: AppColors.textMuted))
+            else
+              ...meals.map((m) => Padding(
+                padding: const EdgeInsets.only(bottom: 8.0),
+                child: Row(
+                  children: [
+                    Text(m['time'] ?? '--:--', style: GoogleFonts.spaceMono(fontSize: 11, color: AppColors.diet)),
+                    const SizedBox(width: 12),
+                    Expanded(child: Text(m['name'] ?? '', style: const TextStyle(fontSize: 13))),
+                    Text('${m['calories']} kcal', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                  ],
+                ),
+              )),
+          ],
+        ),
       );
     }
+
+    if (type == 'study') {
+      final sessions = (item['sessions'] as List?) ?? [];
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 8),
+            if (sessions.isEmpty)
+              const Text('Oturum kaydı bulunamadı.', style: TextStyle(fontSize: 12, color: AppColors.textMuted))
+            else
+              ...sessions.map((s) => Padding(
+                padding: const EdgeInsets.only(bottom: 8.0),
+                child: Row(
+                  children: [
+                    Text(s['time'] ?? '--:--', style: GoogleFonts.spaceMono(fontSize: 11, color: AppColors.study)),
+                    const SizedBox(width: 12),
+                    Expanded(child: Text(s['subject'] ?? 'Ders', style: const TextStyle(fontSize: 13))),
+                    Text('${s['durationMinutes']} dk', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.study)),
+                  ],
+                ),
+              )),
+          ],
+        ),
+      );
+    }
+
+    return const SizedBox();
   }
 }
 
@@ -231,7 +280,7 @@ class _StatMini extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Text(label, style: const TextStyle(fontSize: 10, color: AppColors.textSecondary)),
+        Text(label, style: const TextStyle(fontSize: 10, color: AppColors.textSecondary, letterSpacing: 1)),
         const SizedBox(height: 4),
         Text(value, style: GoogleFonts.spaceMono(
           fontSize: 14, 
