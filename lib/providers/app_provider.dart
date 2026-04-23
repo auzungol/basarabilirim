@@ -67,12 +67,12 @@ class AppProvider extends ChangeNotifier {
       });
       smoke.dailySmoked = 0;
 
-      // Diet Archive
+      // Diet Archive (Maintenance eklendi)
       diet.history.add({
         'date': lastSavedDate,
         'calories': diet.calories,
         'goal': diet.goal,
-        'maintenance': diet.maintenance,
+        'maintenance': diet.maintenance, // Kümülatif hesap için kritik
         'water': diet.water,
         'meals': diet.meals.map((m) => m.toJson()).toList(),
       });

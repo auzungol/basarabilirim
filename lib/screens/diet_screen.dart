@@ -40,7 +40,21 @@ class _DietScreenState extends State<DietScreen> {
         final diet = p.diet;
         final maintenance = diet.maintenance;
         final deficit = diet.deficit;
-        final pct = diet.calories / diet.goal;
+        
+        // Kümülatif hesaplama: Geçmiş veriler + Bugün
+        double totalDeficit = 0;
+        for (var entry in diet.history) {
+          final hMaint = (entry['maintenance'] as num?)?.toDouble() ?? 0.0;
+          final hCal = (entry['calories'] as num?)?.toDouble() ?? 0.0;
+          totalDeficit += (hMaint - hCal);
+        }
+        totalDeficit += deficit; // Bugünkü anlık farkı ekle
+
+        // 7700 kcal = 1 kg kuralına göre kümülatif değişim
+        final totalWeightChange = totalDeficit / 7700;
+        final isLosing = totalWeightChange >= 0;
+
+        final pct = maintenance > 0 ? diet.calories / maintenance : 0.0;
         
         final color = pct > 1.0
             ? AppColors.smoke
@@ -52,6 +66,51 @@ class _DietScreenState extends State<DietScreen> {
           padding: const EdgeInsets.all(16),
           child: Column(
             children: [
+              // KÜMÜLATİF DEĞİŞİM WIDGETI
+              Container(
+                width: double.infinity,
+                margin: const EdgeInsets.only(bottom: 14),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: (isLosing ? AppColors.success : AppColors.smoke).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: (isLosing ? AppColors.success : AppColors.smoke).withOpacity(0.3),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      isLosing ? Icons.history : Icons.trending_up,
+                      color: isLosing ? AppColors.success : AppColors.smoke,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'KÜMÜLATİF KİLO DEĞİŞİMİ',
+                            style: TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w800,
+                              color: isLosing ? AppColors.success : AppColors.smoke,
+                              letterSpacing: 1.5,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Başladığından beri toplam tahmini değişim: ${totalWeightChange.abs().toStringAsFixed(2)} kg ${isLosing ? 'kaybedildi' : 'alındı'}.',
+                            style: const TextStyle(fontSize: 12, color: Colors.white),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
               // Ana Kalori Kartı
               AppCard(
                 borderColor: AppColors.diet,
@@ -86,7 +145,7 @@ class _DietScreenState extends State<DietScreen> {
                                   Padding(
                                     padding: const EdgeInsets.only(bottom: 6, left: 6),
                                     child: Text(
-                                      '/ ${diet.goal}',
+                                      '/ $maintenance',
                                       style: TextStyle(
                                           fontSize: 14,
                                           color: Colors.white.withOpacity(0.4)),
@@ -101,7 +160,7 @@ class _DietScreenState extends State<DietScreen> {
                           value: pct,
                           color: color,
                           label: '${(pct * 100).round()}%',
-                          sublabel: 'hedef',
+                          sublabel: 'ihtiyaç',
                           size: 80,
                         ),
                       ],
@@ -323,28 +382,6 @@ class _DietScreenState extends State<DietScreen> {
                     ],
                   ),
                 ),
-              
-              const SizedBox(height: 14),
-              // Diyet Hedef Ayarı
-              AppCard(
-                borderColor: Colors.white.withOpacity(0.2),
-                child: Row(
-                  children: [
-                    const Expanded(child: Text('Diyet Günlük Hedef (Kcal)', style: TextStyle(color: AppColors.textSecondary, fontSize: 12))),
-                    SizedBox(
-                      width: 60,
-                      child: TextField(
-                        keyboardType: TextInputType.number,
-                        textAlign: TextAlign.end,
-                        style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
-                        controller: TextEditingController(text: diet.goal.toString()),
-                        onChanged: (v) => p.updateDietInfo(goal: int.tryParse(v)),
-                        decoration: const InputDecoration(isDense: true, contentPadding: EdgeInsets.zero),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
             ],
           ),
         );
