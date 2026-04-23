@@ -251,17 +251,25 @@ class _HistoryList extends StatelessWidget {
             if (sessions.isEmpty)
               const Text('Oturum kaydı bulunamadı.', style: TextStyle(fontSize: 12, color: AppColors.textMuted))
             else
-              ...sessions.map((s) => Padding(
-                padding: const EdgeInsets.only(bottom: 8.0),
-                child: Row(
-                  children: [
-                    Text(s['time'] ?? '--:--', style: GoogleFonts.spaceMono(fontSize: 11, color: AppColors.study)),
-                    const SizedBox(width: 12),
-                    Expanded(child: Text(s['subject'] ?? 'Ders', style: const TextStyle(fontSize: 13))),
-                    Text('${s['durationMinutes']} dk', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.study)),
-                  ],
-                ),
-              )),
+              ...sessions.map((s) {
+                final String subject = s['subject'] ?? 'Ders';
+                final String? topic = s['topic'];
+                final displayText = (topic != null && topic.isNotEmpty) 
+                    ? '$subject - ($topic)' 
+                    : subject;
+
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8.0),
+                  child: Row(
+                    children: [
+                      Text(s['time'] ?? '--:--', style: GoogleFonts.spaceMono(fontSize: 11, color: AppColors.study)),
+                      const SizedBox(width: 12),
+                      Expanded(child: Text(displayText, style: const TextStyle(fontSize: 13))),
+                      Text('${s['durationMinutes']} dk', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.study)),
+                    ],
+                  ),
+                );
+              }),
           ],
         ),
       );
