@@ -22,6 +22,34 @@ class _StatsScreenState extends State<StatsScreen> with SingleTickerProviderStat
     _tabController = TabController(length: 3, vsync: this);
   }
 
+  void _clearHistoryDialog(String type) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.card,
+        title: Text('Geçmişi Temizle', style: GoogleFonts.spaceMono(color: Colors.white, fontWeight: FontWeight.bold)),
+        content: const Text('Bu kategorideki tüm geçmiş veriler silinecek. Emin misiniz?', 
+          style: TextStyle(color: AppColors.textSecondary)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('İPTAL', style: TextStyle(color: AppColors.textSecondary)),
+          ),
+          TextButton(
+            onPressed: () {
+              context.read<AppProvider>().clearHistory(type);
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Geçmiş temizlendi')),
+              );
+            },
+            child: const Text('SİL', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -31,6 +59,17 @@ class _StatsScreenState extends State<StatsScreen> with SingleTickerProviderStat
         elevation: 0,
         title: Text('GEÇMİŞ & ANALİZ', 
           style: GoogleFonts.spaceMono(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white)),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.delete_sweep, color: AppColors.textSecondary),
+            tooltip: 'Geçmişi Temizle',
+            onPressed: () {
+              final currentType = _tabController.index == 0 ? 'smoke' : (_tabController.index == 1 ? 'diet' : 'study');
+              _clearHistoryDialog(currentType);
+            },
+          ),
+          const SizedBox(width: 8),
+        ],
         bottom: TabBar(
           controller: _tabController,
           indicatorColor: Colors.white,
@@ -160,18 +199,22 @@ class _HistoryList extends StatelessWidget {
           ),
           if (item['meals'] != null && (item['meals'] as List).isNotEmpty) ...[
              const SizedBox(height: 8),
-             Text('${(item['meals'] as List).length} öğün kaydedildi', 
-               style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+             Center(
+               child: Text('${(item['meals'] as List).length} öğün kaydedildi', 
+                 style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+             ),
           ]
         ],
       );
     } else {
       // Study
       final mins = item['totalMinutes'] ?? 0;
+      final count = item['sessionCount'] ?? 0;
       return Row(
-        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _StatMini(label: 'Toplam Çalışma', value: '$mins dk'),
+          _StatMini(label: 'Toplam Süre', value: '$mins dk'),
+          _StatMini(label: 'Oturum Sayısı', value: '$count'),
         ],
       );
     }

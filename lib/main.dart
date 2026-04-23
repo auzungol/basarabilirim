@@ -1,6 +1,5 @@
 // lib/main.dart
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -13,7 +12,6 @@ import 'screens/study_screen.dart';
 import 'screens/projects_screen.dart';
 import 'screens/stats_screen.dart';
 
-// lib/main.dart içinde main fonksiyonunu şöyle güncelleyin:
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -76,7 +74,8 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+// WidgetsBindingObserver ekleyerek uygulama hareketlerini izliyoruz
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   int _current = 0;
 
   final _screens = const [
@@ -86,6 +85,29 @@ class _HomeScreenState extends State<HomeScreen> {
     ProjectsScreen(),
     StatsScreen(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    // Gözlemciyi başlat
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    // Gözlemciyi kaldır
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Uygulama her öne plana geldiğinde (resumed) tarih kontrolü yap
+    if (state == AppLifecycleState.resumed) {
+      context.read<AppProvider>().refresh();
+      setState(() {}); // Ana ekrandaki tarih yazısını da güncellemek için
+    }
+  }
 
   String _todayStr() {
     const weekdays = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];

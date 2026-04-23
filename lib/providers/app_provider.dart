@@ -48,22 +48,28 @@ class AppProvider extends ChangeNotifier {
     } catch (e) { print("Projects load error: $e"); }
   }
 
-  // Revize: Artık her çağrıldığında tarih kontrolü yapıp gerekirse arayüzü günceller
   void _checkDateAndReset() {
     final now = DateTime.now();
     final todayStr = "${now.day}.${now.month}.${now.year}";
-    final lastDate = _prefs.getString('last_date') ?? todayStr;
+    final lastSavedDate = _prefs.getString('last_date');
 
-    if (lastDate != todayStr) {
+    if (lastSavedDate == null) {
+      _prefs.setString('last_date', todayStr);
+      return;
+    }
+
+    if (lastSavedDate != todayStr) {
+      // Smoke Archive
       smoke.history.add({
-        'date': lastDate,
+        'date': lastSavedDate,
         'smoked': smoke.dailySmoked,
         'limit': smoke.dailyLimit,
       });
       smoke.dailySmoked = 0;
 
+      // Diet Archive
       diet.history.add({
-        'date': lastDate,
+        'date': lastSavedDate,
         'calories': diet.calories,
         'goal': diet.goal,
         'maintenance': diet.maintenance,
@@ -74,13 +80,39 @@ class AppProvider extends ChangeNotifier {
       diet.water = 0;
       diet.meals = [];
 
+      // Study Archive (DÜZELTİLDİ)
+      study.history.add({
+        'date': lastSavedDate,
+        'totalMinutes': study.totalTodayMinutes,
+        'sessionCount': study.sessions.length,
+      });
       study.totalTodayMinutes = 0;
       study.sessions = [];
 
       _prefs.setString('last_date', todayStr);
       _saveAll();
-      notifyListeners(); // Arayüzün yenilenmesi için eklendi
+      notifyListeners();
     }
+  }
+
+  void refresh() {
+    _checkDateAndReset();
+    notifyListeners();
+  }
+
+  // Geçmişi Temizleme Metodları
+  void clearHistory(String type) {
+    if (type == 'smoke') {
+      smoke.history = [];
+      _saveSmoke();
+    } else if (type == 'diet') {
+      diet.history = [];
+      _saveDiet();
+    } else if (type == 'study') {
+      study.history = [];
+      _saveStudy();
+    }
+    notifyListeners();
   }
 
   void _saveAll() {
@@ -97,14 +129,14 @@ class AppProvider extends ChangeNotifier {
 
   // ── Smoke ──────────────────────────────────────────────────────────
   void addSmoke() {
-    _checkDateAndReset(); // Revize
+    _checkDateAndReset();
     smoke.dailySmoked++;
     _saveSmoke();
     notifyListeners();
   }
 
   void removeSmoke() {
-    _checkDateAndReset(); // Revize
+    _checkDateAndReset();
     if (smoke.dailySmoked > 0) smoke.dailySmoked--;
     _saveSmoke();
     notifyListeners();
@@ -120,7 +152,7 @@ class AppProvider extends ChangeNotifier {
 
   // ── Diet ───────────────────────────────────────────────────────────
   void addMeal(String name, int calories) {
-    _checkDateAndReset(); // Revize
+    _checkDateAndReset();
     final now = TimeOfDay.now();
     final time = '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
     diet.meals.add(Meal(name: name, calories: calories, time: time));
@@ -130,7 +162,7 @@ class AppProvider extends ChangeNotifier {
   }
 
   void removeMeal(int index) {
-    _checkDateAndReset(); // Revize
+    _checkDateAndReset();
     final meal = diet.meals[index];
     diet.calories -= meal.calories;
     diet.meals.removeAt(index);
@@ -139,7 +171,7 @@ class AppProvider extends ChangeNotifier {
   }
 
   void addWater() {
-    _checkDateAndReset(); // Revize
+    _checkDateAndReset();
     if (diet.water < diet.waterGoal) {
       diet.water++;
       _saveDiet();
@@ -148,7 +180,7 @@ class AppProvider extends ChangeNotifier {
   }
 
   void removeWater() {
-    _checkDateAndReset(); // Revize
+    _checkDateAndReset();
     if (diet.water > 0) {
       diet.water--;
       _saveDiet();
@@ -176,14 +208,14 @@ class AppProvider extends ChangeNotifier {
 
   // ── Study ──────────────────────────────────────────────────────────
   void startStudySession(String subject) {
-    _checkDateAndReset(); // Revize
+    _checkDateAndReset();
     study.activeSubject = subject;
     study.sessionStart = DateTime.now();
     notifyListeners();
   }
 
   void stopStudySession() {
-    _checkDateAndReset(); // Revize
+    _checkDateAndReset();
     if (!study.isActive) return;
     final duration = DateTime.now().difference(study.sessionStart!).inMinutes;
     final now = TimeOfDay.now();
@@ -200,7 +232,7 @@ class AppProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ── Projects (Değişim gerektirmedi, tarih bağımlılığı yok) ────────
+  // ── Projects ──────────────────────────────────────────────────────
   void addProject(String name, String desc, Priority priority, String deadline) {
     final now = DateTime.now();
     final dateStr = '${now.day}.${now.month}.${now.year}';
