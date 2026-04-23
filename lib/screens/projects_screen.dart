@@ -16,6 +16,8 @@ class ProjectsScreen extends StatefulWidget {
 
 class _ProjectsScreenState extends State<ProjectsScreen> {
   bool _showForm = false;
+  int? _editingProjectId;
+  
   final _nameCtrl = TextEditingController();
   final _descCtrl = TextEditingController();
   Priority _priority = Priority.mid;
@@ -30,10 +32,42 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
 
   void _submitProject(AppProvider p) {
     if (_nameCtrl.text.trim().isEmpty) return;
-    p.addProject(_nameCtrl.text.trim(), _descCtrl.text.trim(), _priority, _deadline);
+    
+    if (_editingProjectId != null) {
+      p.updateProject(
+        _editingProjectId!,
+        name: _nameCtrl.text.trim(),
+        desc: _descCtrl.text.trim(),
+        priority: _priority,
+        deadline: _deadline,
+      );
+    } else {
+      p.addProject(_nameCtrl.text.trim(), _descCtrl.text.trim(), _priority, _deadline);
+    }
+    
+    _resetForm();
+  }
+
+  void _resetForm() {
     _nameCtrl.clear();
     _descCtrl.clear();
-    setState(() { _showForm = false; _priority = Priority.mid; _deadline = ''; });
+    setState(() { 
+      _showForm = false; 
+      _editingProjectId = null;
+      _priority = Priority.mid; 
+      _deadline = ''; 
+    });
+  }
+
+  void _editProject(Project proj) {
+    setState(() {
+      _showForm = true;
+      _editingProjectId = proj.id;
+      _nameCtrl.text = proj.name;
+      _descCtrl.text = proj.desc;
+      _priority = proj.priority;
+      _deadline = proj.deadline;
+    });
   }
 
   Color _priorityColor(Priority pr) {
@@ -55,9 +89,9 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
           padding: const EdgeInsets.all(16),
           child: Column(
             children: [
-              // Add button
+              // Add/Edit button
               GestureDetector(
-                onTap: () => setState(() => _showForm = !_showForm),
+                onTap: () => _showForm ? _resetForm() : setState(() => _showForm = true),
                 child: Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(vertical: 14),
@@ -75,7 +109,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
                 ),
               ),
 
-              // Add form
+              // Form
               if (_showForm) ...[
                 const SizedBox(height: 12),
                 AppCard(
@@ -102,10 +136,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 const Text('Öncelik',
-                                    style: TextStyle(
-                                        fontSize: 10,
-                                        color: AppColors.textSecondary,
-                                        letterSpacing: 1)),
+                                    style: TextStyle(fontSize: 10, color: AppColors.textSecondary, letterSpacing: 1)),
                                 const SizedBox(height: 6),
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 14),
@@ -120,14 +151,8 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
                                       dropdownColor: const Color(0xFF1A1A2E),
                                       style: const TextStyle(color: Colors.white, fontSize: 14),
                                       isExpanded: true,
-                                      onChanged: (v) =>
-                                          setState(() => _priority = v ?? Priority.mid),
-                                      items: Priority.values
-                                          .map((pr) => DropdownMenuItem(
-                                                value: pr,
-                                                child: Text(pr.label),
-                                              ))
-                                          .toList(),
+                                      onChanged: (v) => setState(() => _priority = v ?? Priority.mid),
+                                      items: Priority.values.map((pr) => DropdownMenuItem(value: pr, child: Text(pr.label))).toList(),
                                     ),
                                   ),
                                 ),
@@ -140,10 +165,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 const Text('Son Tarih',
-                                    style: TextStyle(
-                                        fontSize: 10,
-                                        color: AppColors.textSecondary,
-                                        letterSpacing: 1)),
+                                    style: TextStyle(fontSize: 10, color: AppColors.textSecondary, letterSpacing: 1)),
                                 const SizedBox(height: 6),
                                 GestureDetector(
                                   onTap: () async {
@@ -154,21 +176,17 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
                                       lastDate: DateTime.now().add(const Duration(days: 365 * 2)),
                                       builder: (context, child) => Theme(
                                         data: Theme.of(context).copyWith(
-                                          colorScheme: const ColorScheme.dark(
-                                            primary: AppColors.projects,
-                                          ),
+                                          colorScheme: const ColorScheme.dark(primary: AppColors.projects),
                                         ),
                                         child: child!,
                                       ),
                                     );
                                     if (picked != null) {
-                                      setState(() => _deadline =
-                                          '${picked.day}.${picked.month}.${picked.year}');
+                                      setState(() => _deadline = '${picked.day}.${picked.month}.${picked.year}');
                                     }
                                   },
                                   child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 14, vertical: 12),
+                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                                     decoration: BoxDecoration(
                                       color: Colors.white.withOpacity(0.06),
                                       borderRadius: BorderRadius.circular(10),
@@ -176,11 +194,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
                                     ),
                                     child: Text(
                                       _deadline.isEmpty ? 'Seç...' : _deadline,
-                                      style: TextStyle(
-                                          color: _deadline.isEmpty
-                                              ? AppColors.textMuted
-                                              : Colors.white,
-                                          fontSize: 14),
+                                      style: TextStyle(color: _deadline.isEmpty ? AppColors.textMuted : Colors.white, fontSize: 14),
                                     ),
                                   ),
                                 ),
@@ -191,7 +205,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
                       ),
                       const SizedBox(height: 14),
                       AccentButton(
-                        label: 'Projeyi Kaydet',
+                        label: _editingProjectId != null ? 'Değişiklikleri Kaydet' : 'Projeyi Kaydet',
                         color: AppColors.projects,
                         fullWidth: true,
                         onTap: () => _submitProject(p),
@@ -219,7 +233,9 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
                         project: proj,
                         onToggle: () => p.toggleProject(proj.id),
                         onDelete: () => p.deleteProject(proj.id),
+                        onEdit: () => _editProject(proj),
                         onAddTask: (name) => p.addTask(proj.id, name),
+                        onDeleteTask: (i) => p.deleteTask(proj.id, i),
                         onToggleTask: (i) => p.toggleTask(proj.id, i),
                         priorityColor: _priorityColor(proj.priority)),
                   )),
@@ -229,11 +245,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
                   padding: const EdgeInsets.symmetric(vertical: 8),
                   child: Text(
                     'TAMAMLANANLAR (${done.length})',
-                    style: const TextStyle(
-                        fontSize: 10,
-                        color: AppColors.textMuted,
-                        letterSpacing: 2,
-                        fontWeight: FontWeight.w700),
+                    style: const TextStyle(fontSize: 10, color: AppColors.textMuted, letterSpacing: 2, fontWeight: FontWeight.w700),
                   ),
                 ),
                 ...done.map((proj) => Opacity(
@@ -244,7 +256,9 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
                             project: proj,
                             onToggle: () => p.toggleProject(proj.id),
                             onDelete: () => p.deleteProject(proj.id),
+                            onEdit: () => _editProject(proj),
                             onAddTask: (_) {},
+                            onDeleteTask: (_) {},
                             onToggleTask: (_) {},
                             priorityColor: _priorityColor(proj.priority)),
                       ),
@@ -262,7 +276,9 @@ class _ProjectCard extends StatefulWidget {
   final Project project;
   final VoidCallback onToggle;
   final VoidCallback onDelete;
+  final VoidCallback onEdit;
   final ValueChanged<String> onAddTask;
+  final ValueChanged<int> onDeleteTask;
   final ValueChanged<int> onToggleTask;
   final Color priorityColor;
 
@@ -270,7 +286,9 @@ class _ProjectCard extends StatefulWidget {
     required this.project,
     required this.onToggle,
     required this.onDelete,
+    required this.onEdit,
     required this.onAddTask,
+    required this.onDeleteTask,
     required this.onToggleTask,
     required this.priorityColor,
   });
@@ -309,13 +327,9 @@ class _ProjectCardState extends State<_ProjectCard> {
                   decoration: BoxDecoration(
                     color: p.done ? AppColors.success : Colors.transparent,
                     borderRadius: BorderRadius.circular(6),
-                    border: Border.all(
-                        color: p.done ? AppColors.success : Colors.white.withOpacity(0.2),
-                        width: 2),
+                    border: Border.all(color: p.done ? AppColors.success : Colors.white.withOpacity(0.2), width: 2),
                   ),
-                  child: p.done
-                      ? const Icon(Icons.check, size: 14, color: Color(0xFF001A08))
-                      : null,
+                  child: p.done ? const Icon(Icons.check, size: 14, color: Color(0xFF001A08)) : null,
                 ),
               ),
               const SizedBox(width: 12),
@@ -325,6 +339,7 @@ class _ProjectCardState extends State<_ProjectCard> {
                   children: [
                     Wrap(
                       spacing: 8,
+                      runSpacing: 4,
                       crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         Text(
@@ -333,8 +348,7 @@ class _ProjectCardState extends State<_ProjectCard> {
                               color: Colors.white,
                               fontSize: 15,
                               fontWeight: FontWeight.w600,
-                              decoration:
-                                  p.done ? TextDecoration.lineThrough : null),
+                              decoration: p.done ? TextDecoration.lineThrough : null),
                         ),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -344,25 +358,17 @@ class _ProjectCardState extends State<_ProjectCard> {
                           ),
                           child: Text(
                             p.priority.label,
-                            style: TextStyle(
-                                fontSize: 10,
-                                color: widget.priorityColor,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 1),
+                            style: TextStyle(fontSize: 10, color: widget.priorityColor, fontWeight: FontWeight.w700, letterSpacing: 1),
                           ),
                         ),
                         if (p.deadline.isNotEmpty)
-                          Text('📅 ${p.deadline}',
-                              style: const TextStyle(
-                                  fontSize: 10, color: AppColors.textSecondary)),
+                          Text('📅 ${p.deadline}', style: const TextStyle(fontSize: 10, color: AppColors.textSecondary)),
                       ],
                     ),
                     if (p.desc.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.only(top: 4),
-                        child: Text(p.desc,
-                            style: const TextStyle(
-                                color: AppColors.textSecondary, fontSize: 12)),
+                        child: Text(p.desc, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
                       ),
                     if (p.tasks.isNotEmpty) ...[
                       const SizedBox(height: 8),
@@ -376,11 +382,7 @@ class _ProjectCardState extends State<_ProjectCard> {
                         ),
                       ),
                       const SizedBox(height: 3),
-                      Text(
-                        '${p.completedTasks}/${p.tasks.length} görev',
-                        style: const TextStyle(
-                            fontSize: 10, color: AppColors.textSecondary),
-                      ),
+                      Text('${p.completedTasks}/${p.tasks.length} görev', style: const TextStyle(fontSize: 10, color: AppColors.textSecondary)),
                     ],
                   ],
                 ),
@@ -392,28 +394,25 @@ class _ProjectCardState extends State<_ProjectCard> {
                     child: Container(
                       width: 28,
                       height: 28,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.05),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Icon(
-                          _expanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
-                          color: AppColors.textSecondary,
-                          size: 18),
+                      decoration: BoxDecoration(color: Colors.white.withOpacity(0.05), borderRadius: BorderRadius.circular(6)),
+                      child: Icon(_expanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down, color: AppColors.textSecondary, size: 18),
                     ),
                   ),
                   const SizedBox(height: 6),
                   GestureDetector(
+                    onTap: widget.onEdit,
+                    child: Icon(Icons.edit_outlined, color: AppColors.textSecondary.withOpacity(0.8), size: 18),
+                  ),
+                  const SizedBox(height: 6),
+                  GestureDetector(
                     onTap: widget.onDelete,
-                    child: Icon(Icons.delete_outline,
-                        color: AppColors.smoke.withOpacity(0.5), size: 20),
+                    child: Icon(Icons.delete_outline, color: AppColors.smoke.withOpacity(0.5), size: 18),
                   ),
                 ],
               ),
             ],
           ),
 
-          // Tasks expansion
           if (_expanded && !p.done) ...[
             Divider(height: 20, color: Colors.white.withOpacity(0.06)),
             ...p.tasks.asMap().entries.map((e) {
@@ -432,15 +431,9 @@ class _ProjectCardState extends State<_ProjectCard> {
                         decoration: BoxDecoration(
                           color: t.done ? AppColors.projects : Colors.transparent,
                           borderRadius: BorderRadius.circular(4),
-                          border: Border.all(
-                              color: t.done
-                                  ? AppColors.projects
-                                  : Colors.white.withOpacity(0.2),
-                              width: 2),
+                          border: Border.all(color: t.done ? AppColors.projects : Colors.white.withOpacity(0.2), width: 2),
                         ),
-                        child: t.done
-                            ? const Icon(Icons.check, size: 10, color: Colors.white)
-                            : null,
+                        child: t.done ? const Icon(Icons.check, size: 10, color: Colors.white) : null,
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -448,13 +441,15 @@ class _ProjectCardState extends State<_ProjectCard> {
                       child: Text(
                         t.name,
                         style: TextStyle(
-                          color: t.done
-                              ? Colors.white.withOpacity(0.3)
-                              : Colors.white.withOpacity(0.8),
+                          color: t.done ? Colors.white.withOpacity(0.3) : Colors.white.withOpacity(0.8),
                           fontSize: 13,
                           decoration: t.done ? TextDecoration.lineThrough : null,
                         ),
                       ),
+                    ),
+                    GestureDetector(
+                      onTap: () => widget.onDeleteTask(i),
+                      child: Icon(Icons.close, color: AppColors.smoke.withOpacity(0.3), size: 16),
                     ),
                   ],
                 ),

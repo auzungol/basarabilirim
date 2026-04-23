@@ -172,7 +172,6 @@ class AppProvider extends ChangeNotifier {
 
   void addWater() {
     _checkDateAndReset();
-    // LIMIT KALDIRILDI: Artık 8'den fazla su eklenebilir
     diet.water++;
     _saveDiet();
     notifyListeners();
@@ -247,11 +246,27 @@ class AppProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void updateProject(int id, {String? name, String? desc, Priority? priority, String? deadline}) {
+    final index = projects.list.indexWhere((p) => p.id == id);
+    if (index != -1) {
+      projects.list[index] = projects.list[index].copyWith(
+        name: name,
+        desc: desc,
+        priority: priority,
+        deadline: deadline,
+      );
+      _saveProjects();
+      notifyListeners();
+    }
+  }
+
   void toggleProject(int id) {
-    final p = projects.list.firstWhere((p) => p.id == id);
-    p.done = !p.done;
-    _saveProjects();
-    notifyListeners();
+    final index = projects.list.indexWhere((p) => p.id == id);
+    if (index != -1) {
+      projects.list[index] = projects.list[index].copyWith(done: !projects.list[index].done);
+      _saveProjects();
+      notifyListeners();
+    }
   }
 
   void deleteProject(int id) {
@@ -261,8 +276,16 @@ class AppProvider extends ChangeNotifier {
   }
 
   void addTask(int projectId, String taskName) {
+    if (taskName.isEmpty) return;
     final p = projects.list.firstWhere((p) => p.id == projectId);
     p.tasks.add(ProjectTask(name: taskName));
+    _saveProjects();
+    notifyListeners();
+  }
+
+  void deleteTask(int projectId, int taskIndex) {
+    final p = projects.list.firstWhere((p) => p.id == projectId);
+    p.tasks.removeAt(taskIndex);
     _saveProjects();
     notifyListeners();
   }
