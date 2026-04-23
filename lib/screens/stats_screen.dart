@@ -171,8 +171,9 @@ class _HistoryList extends StatelessWidget {
       return Text('$smoked / $limit Adet', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary));
     } else if (type == 'diet') {
       final cal = item['calories'] ?? 0;
-      final goal = item['goal'] ?? 0;
-      return Text('$cal / $goal kcal', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary));
+      // FIX: Geçmiş kayıttaki maintenance (ihtiyaç) değerini al, yoksa goal veya 2000 kullan
+      final target = item['maintenance'] ?? item['goal'] ?? 2000;
+      return Text('$cal / $target kcal', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary));
     } else {
       final mins = item['totalMinutes'] ?? 0;
       return Text('$mins Dakika Çalışma', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary));
