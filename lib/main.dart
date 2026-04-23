@@ -13,26 +13,24 @@ import 'screens/study_screen.dart';
 import 'screens/projects_screen.dart';
 import 'screens/stats_screen.dart';
 
+// lib/main.dart içinde main fonksiyonunu şöyle güncelleyin:
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await initializeDateFormatting('tr_TR', null);
 
-  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-    statusBarColor: Colors.transparent,
-    statusBarIconBrightness: Brightness.light,
-    systemNavigationBarColor: AppColors.bg,
-    systemNavigationBarIconBrightness: Brightness.light,
-  ));
+  try {
+    await initializeDateFormatting('tr_TR', null);
+    final provider = AppProvider();
+    await provider.init();
 
-  final provider = AppProvider();
-  await provider.init();
-
-  runApp(
-    ChangeNotifierProvider.value(
-      value: provider,
-      child: const BasarabilirimApp(),
-    ),
-  );
+    runApp(
+      ChangeNotifierProvider.value(
+        value: provider,
+        child: const BasarabilirimApp(),
+      ),
+    );
+  } catch (e) {
+    debugPrint("Başlatma hatası: $e");
+  }
 }
 
 class BasarabilirimApp extends StatelessWidget {
