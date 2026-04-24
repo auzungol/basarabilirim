@@ -120,11 +120,11 @@ class _StudyScreenState extends State<StudyScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _detailRow('Toplam:', _fmtMin(sub.totalMinutes)),
-            const SizedBox(height: 10),
-            _detailRow('Son Konu:', sub.lastTopic ?? 'Yok'),
-            const SizedBox(height: 10),
-            _detailRow('Son Tarih:', sub.lastDate ?? '-'),
+            _detailRow('Toplam Çalışma:', _fmtMin(sub.totalMinutes)),
+            const SizedBox(height: 12),
+            _detailRow('Son Çalışılan Konu:', sub.lastTopic ?? 'Henüz yok'),
+            const SizedBox(height: 12),
+            _detailRow('Son Çalışma Tarihi:', sub.lastDate ?? '-'),
           ],
         ),
         actions: [
@@ -138,7 +138,8 @@ class _StudyScreenState extends State<StudyScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(color: AppColors.textSecondary, fontSize: 10)),
+        Text(label, style: const TextStyle(color: AppColors.textSecondary, fontSize: 10, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 2),
         Text(value, style: const TextStyle(color: Colors.white, fontSize: 14)),
       ],
     );
@@ -155,7 +156,7 @@ class _StudyScreenState extends State<StudyScreen> {
           controller: ctrl,
           autofocus: true,
           style: const TextStyle(color: Colors.white),
-          decoration: const InputDecoration(hintText: 'Konu ne?'),
+          decoration: const InputDecoration(hintText: 'Hangi konuyu çalışacaksın?'),
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('İPTAL')),
@@ -205,53 +206,95 @@ class _StudyScreenState extends State<StudyScreen> {
                         crossAxisCount: 3,
                         crossAxisSpacing: 8,
                         mainAxisSpacing: 8,
-                        childAspectRatio: 1.0,
+                        childAspectRatio: 0.85, 
                       ),
                       itemCount: study.subjects.length,
                       itemBuilder: (context, index) {
                         final sub = study.subjects[index];
                         final color = Color(sub.colorValue);
-                        return InkWell(
-                          onTap: study.isActive ? null : () => _startWithSubject(context, p, sub),
-                          onLongPress: () {
-                            showDialog(
-                              context: context,
-                              builder: (context) => AlertDialog(
-                                backgroundColor: AppColors.card,
-                                title: const Text('Sil'),
-                                content: Text('${sub.name} silinsin mi?'),
-                                actions: [
-                                  TextButton(onPressed: () => Navigator.pop(context), child: const Text('HAYIR')),
-                                  TextButton(onPressed: () { p.deleteSubject(sub.id); Navigator.pop(context); }, child: const Text('SİL', style: TextStyle(color: Colors.red))),
-                                ],
-                              ),
-                            );
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: AppColors.card,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: color.withOpacity(0.4)),
-                            ),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Row(
-                                  children: [
-                                    Expanded(child: Text(sub.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
-                                    GestureDetector(
-                                      onTap: () => _showDetails(context, sub),
-                                      child: Icon(Icons.info_outline, color: color.withOpacity(0.6), size: 14),
+                        return Container(
+                          decoration: BoxDecoration(
+                            color: AppColors.card,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: color.withOpacity(0.3)),
+                          ),
+                          child: Stack(
+                            children: [
+                              // Bilgi alanı için TÜM KARTI kaplayan Material/InkWell
+                              Positioned.fill(
+                                child: Material(
+                                  color: Colors.transparent,
+                                  child: InkWell(
+                                    borderRadius: BorderRadius.circular(12),
+                                    onTap: () => _showDetails(context, sub),
+                                    onLongPress: () {
+                                      showDialog(
+                                        context: context,
+                                        builder: (context) => AlertDialog(
+                                          backgroundColor: AppColors.card,
+                                          title: const Text('Dersi Sil'),
+                                          content: Text('${sub.name} dersini ve tüm verilerini silmek istediğine emin misin?'),
+                                          actions: [
+                                            TextButton(onPressed: () => Navigator.pop(context), child: const Text('HAYIR')),
+                                            TextButton(onPressed: () { p.deleteSubject(sub.id); Navigator.pop(context); }, child: const Text('SİL', style: TextStyle(color: Colors.red))),
+                                          ],
+                                        ),
+                                      );
+                                    },
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(10),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            sub.name, 
+                                            maxLines: 2, 
+                                            overflow: TextOverflow.ellipsis, 
+                                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, height: 1.1)
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            _fmtMin(sub.totalMinutes), 
+                                            style: TextStyle(fontSize: 10, color: color.withOpacity(0.8), fontWeight: FontWeight.bold)
+                                          ),
+                                        ],
+                                      ),
                                     ),
-                                  ],
+                                  ),
                                 ),
-                                const Spacer(),
-                                Text(_fmtMin(sub.totalMinutes), style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.bold)),
-                                const SizedBox(height: 4),
-                                Icon(Icons.play_arrow, color: color, size: 18),
-                              ],
-                            ),
+                              ),
+                              
+                              // Sağ üstte küçük info ikonu (Tıklamayı engellememesi için IgnorePointer)
+                              const Positioned(
+                                top: 8,
+                                right: 8,
+                                child: IgnorePointer(
+                                  child: Icon(Icons.info_outline, color: Colors.white10, size: 12),
+                                ),
+                              ),
+
+                              // Alt kısımda sayaç başlatma butonu (InkWell'in üzerinde olduğu için kendi tıklamasını alır)
+                              Positioned(
+                                bottom: 10,
+                                left: 10,
+                                right: 10,
+                                child: GestureDetector(
+                                  onTap: study.isActive ? null : () => _startWithSubject(context, p, sub),
+                                  child: Opacity(
+                                    opacity: study.isActive ? 0.3 : 1.0,
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(vertical: 6),
+                                      decoration: BoxDecoration(
+                                        color: color.withOpacity(0.15),
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(color: color.withOpacity(0.4)),
+                                      ),
+                                      child: Icon(Icons.play_arrow_rounded, color: color, size: 22),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         );
                       },
@@ -284,7 +327,7 @@ class _StudyScreenState extends State<StudyScreen> {
                               children: [
                                 Expanded(
                                   child: AccentButton(
-                                    label: study.isPaused ? '▶ DEVAM ET' : '⏸ MOLA VER',
+                                    label: study.isPaused ? ' DEVAM ET ' : ' MOLA VER ',
                                     color: study.isPaused ? AppColors.study : AppColors.diet,
                                     onTap: () { p.togglePauseStudySession(); },
                                   ),
@@ -292,7 +335,7 @@ class _StudyScreenState extends State<StudyScreen> {
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: AccentButton(
-                                    label: '⏹ BİTİR',
+                                    label: ' BİTİR ',
                                     color: AppColors.smoke,
                                     onTap: () { 
                                       p.completeStudySession(_elapsed ~/ 60); 
