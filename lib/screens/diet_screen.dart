@@ -16,11 +16,28 @@ class DietScreen extends StatefulWidget {
 class _DietScreenState extends State<DietScreen> {
   final _mealCtrl = TextEditingController();
   final _calCtrl = TextEditingController();
+  
+  // Vücut analizi için sabit controller'lar (rebuild'lerde focus kaybını önler)
+  late TextEditingController _weightCtrl;
+  late TextEditingController _heightCtrl;
+  late TextEditingController _ageCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    final diet = context.read<AppProvider>().diet;
+    _weightCtrl = TextEditingController(text: diet.weight.toString());
+    _heightCtrl = TextEditingController(text: diet.height.toString());
+    _ageCtrl = TextEditingController(text: diet.age.toString());
+  }
 
   @override
   void dispose() {
     _mealCtrl.dispose();
     _calCtrl.dispose();
+    _weightCtrl.dispose();
+    _heightCtrl.dispose();
+    _ageCtrl.dispose();
     super.dispose();
   }
 
@@ -244,11 +261,11 @@ class _DietScreenState extends State<DietScreen> {
                     // Ayarlar Formu
                     Row(
                       children: [
-                        _formField('Kilo', diet.weight.toString(), (v) => p.updateDietInfo(weight: double.tryParse(v))),
+                        _formField('Kilo', _weightCtrl, (v) => p.updateDietInfo(weight: double.tryParse(v))),
                         const SizedBox(width: 10),
-                        _formField('Boy', diet.height.toString(), (v) => p.updateDietInfo(height: int.tryParse(v))),
+                        _formField('Boy', _heightCtrl, (v) => p.updateDietInfo(height: int.tryParse(v))),
                         const SizedBox(width: 10),
-                        _formField('Yaş', diet.age.toString(), (v) => p.updateDietInfo(age: int.tryParse(v))),
+                        _formField('Yaş', _ageCtrl, (v) => p.updateDietInfo(age: int.tryParse(v))),
                         const SizedBox(width: 10),
                         GestureDetector(
                           onTap: () => p.updateDietInfo(isMale: !diet.isMale),
@@ -405,7 +422,7 @@ class _DietScreenState extends State<DietScreen> {
     );
   }
 
-  Widget _formField(String label, String value, Function(String) onChanged) {
+  Widget _formField(String label, TextEditingController controller, Function(String) onChanged) {
     return Expanded(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -414,7 +431,7 @@ class _DietScreenState extends State<DietScreen> {
           TextField(
             keyboardType: TextInputType.number,
             style: const TextStyle(color: Colors.white, fontSize: 13),
-            controller: TextEditingController(text: value),
+            controller: controller,
             onChanged: onChanged,
             decoration: const InputDecoration(isDense: true, contentPadding: EdgeInsets.symmetric(vertical: 8)),
           ),
