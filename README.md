@@ -33,3 +33,6 @@ Kişisel takip uygulaması — sigara bırakma, diyet, ders ve proje yönetimi.
 - İlerleme çubuğu
 - Tamamlama durumu
 
+### 📈 Analiz Modülü
+- Geçmiş günlerin verileri
+
