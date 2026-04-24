@@ -17,7 +17,6 @@ class _DietScreenState extends State<DietScreen> {
   final _mealCtrl = TextEditingController();
   final _calCtrl = TextEditingController();
   
-  // Vücut analizi için sabit controller'lar (rebuild'lerde focus kaybını önler)
   late TextEditingController _weightCtrl;
   late TextEditingController _heightCtrl;
   late TextEditingController _ageCtrl;
@@ -29,10 +28,54 @@ class _DietScreenState extends State<DietScreen> {
     _weightCtrl = TextEditingController(text: diet.weight.toString());
     _heightCtrl = TextEditingController(text: diet.height.toString());
     _ageCtrl = TextEditingController(text: diet.age.toString());
+    
+    // Yemek adı değişimini dinle
+    _mealCtrl.addListener(_onMealChanged);
+  }
+
+  void _onMealChanged() {
+    final query = _mealCtrl.text.trim().toLowerCase();
+    if (query.isEmpty) {
+      if (_calCtrl.text.isNotEmpty) _calCtrl.clear();
+      return;
+    }
+
+    final provider = context.read<AppProvider>();
+    int? foundCalories;
+
+    // 1. Önce bugünkü öğünlere bak
+    for (var meal in provider.diet.meals) {
+      if (meal.name.toLowerCase() == query) {
+        foundCalories = meal.calories;
+        break;
+      }
+    }
+
+    // 2. Bugünkülerde yoksa tüm geçmişi (history) tara
+    if (foundCalories == null) {
+      for (var day in provider.diet.history) {
+        final meals = day['meals'] as List?;
+        if (meals != null) {
+          for (var m in meals) {
+            if (m['name']?.toString().toLowerCase() == query) {
+              foundCalories = int.tryParse(m['calories']?.toString() ?? '');
+              break;
+            }
+          }
+        }
+        if (foundCalories != null) break;
+      }
+    }
+
+    // 3. Eğer bulunduysa ve kalori alanı şu an boşsa veya kullanıcı bir şey sildiyse doldur
+    if (foundCalories != null) {
+      _calCtrl.text = foundCalories.toString();
+    }
   }
 
   @override
   void dispose() {
+    _mealCtrl.removeListener(_onMealChanged);
     _mealCtrl.dispose();
     _calCtrl.dispose();
     _weightCtrl.dispose();
@@ -58,19 +101,16 @@ class _DietScreenState extends State<DietScreen> {
         final maintenance = diet.maintenance;
         final deficit = diet.deficit;
         
-        // Kümülatif hesaplama: Geçmiş veriler + Bugün
         double totalDeficit = 0;
         for (var entry in diet.history) {
           final hMaint = (entry['maintenance'] as num?)?.toDouble() ?? 0.0;
           final hCal = (entry['calories'] as num?)?.toDouble() ?? 0.0;
           totalDeficit += (hMaint - hCal);
         }
-        totalDeficit += deficit; // Bugünkü anlık farkı ekle
+        totalDeficit += deficit;
 
-        // 7700 kcal = 1 kg kuralına göre kümülatif değişim
         final totalWeightChange = totalDeficit / 7700;
         final isLosing = totalWeightChange >= 0;
-
         final pct = maintenance > 0 ? diet.calories / maintenance : 0.0;
         
         final color = pct > 1.0
@@ -183,7 +223,6 @@ class _DietScreenState extends State<DietScreen> {
                       ],
                     ),
                     const SizedBox(height: 20),
-                    // Kalori Giriş Satırı
                     Row(
                       children: [
                         Expanded(
@@ -258,7 +297,6 @@ class _DietScreenState extends State<DietScreen> {
                       ],
                     ),
                     const Divider(color: Colors.white10, height: 32),
-                    // Ayarlar Formu
                     Row(
                       children: [
                         _formField('Kilo', _weightCtrl, (v) => p.updateDietInfo(weight: double.tryParse(v))),
@@ -281,7 +319,6 @@ class _DietScreenState extends State<DietScreen> {
                       ],
                     ),
                     const SizedBox(height: 12),
-                    // Aktivite Seçimi
                     SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
                       child: Row(
@@ -299,7 +336,7 @@ class _DietScreenState extends State<DietScreen> {
 
               const SizedBox(height: 14),
 
-              // Water Section
+              // SU TÜKETİMİ
               AppCard(
                 borderColor: AppColors.water,
                 backgroundColor: const Color(0xFF001A0D),
@@ -355,7 +392,7 @@ class _DietScreenState extends State<DietScreen> {
 
               const SizedBox(height: 14),
 
-              // Meals List
+              // ÖĞÜNLER
               if (diet.meals.isNotEmpty)
                 AppCard(
                   borderColor: Colors.white,
